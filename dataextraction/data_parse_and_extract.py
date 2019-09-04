@@ -1,13 +1,16 @@
 """
     Cleans up raw dataset and downloads image links to a local db
 """
-import pandas as pd
 import requests
+import warnings
+import pandas as pd
 from tqdm import tqdm
 import multiprocessing as mp
 from bs4 import BeautifulSoup
 from sqlalchemy.orm import sessionmaker
 from dataextraction.model import Base, engine, SoNData
+
+warnings.filterwarnings("ignore")
 
 
 def parse_link_for_image(source_url):
@@ -17,7 +20,7 @@ def parse_link_for_image(source_url):
         :return:
     """
 
-    response = requests.get(source_url)
+    response = requests.get(source_url, verify=False)
 
     soup = BeautifulSoup(response.text, 'html.parser')
     img_tags = soup.find_all('img')
@@ -93,7 +96,7 @@ def mp_process_links(tid, id_url_tuple, mp_list):
             name_and_imagelink = parse_link_for_image(source_url=url)
             mp_list.append((idx, url, name_and_imagelink[0][0], name_and_imagelink[0][1]))
         except Exception as e:
-            print("exception with thread {0}, for row: {1} and url: {2}".format(tid, idx, url))
+            print("exception {0} with thread {1}, for row: {2} and url: {3}".format(e, tid, idx, url))
             mp_list.append((idx, url, None, None))
             pass
 
@@ -121,9 +124,9 @@ def main():
 
     # read source tsv
     df_rawdata = pd.read_table("rawdata/votes.tsv")
-    df_rawdata = df_rawdata.iloc[:100000]
+    df_rawdata = df_rawdata.iloc[:200000]
 
-    threads = 5
+    threads = 10
 
     # prep data for multiprocessing
     data_thread_chunks = prep_for_multiprocessing(df_rawdata, threads)
